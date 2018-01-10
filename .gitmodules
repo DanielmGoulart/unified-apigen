@@ -1,0 +1,3 @@
+[submodule "External/libdwarf"]
+	path = External/libdwarf
+	url = git@github.com:avast-tl/libdwarf.git
