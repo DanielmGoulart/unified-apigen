@@ -1,8 +1,8 @@
 #include "Trace.hpp"
 
-#if defined(OS_WINDOWS)
+#if OS_WINDOWS
     #include "Windows.h"
-#elif defined(OS_LINUX)
+#elif OS_LINUX
     #include <pthread.h>
     #include <time.h>
 #endif
@@ -11,9 +11,9 @@ namespace Trace {
 
 std::uint32_t InternalGetThreadId()
 {
-#if defined(OS_WINDOWS)
+#if OS_WINDOWS
     return GetCurrentThreadId();
-#elif defined(OS_LINUX)
+#elif OS_LINUX
     return pthread_self();
 #else
     return 0;
@@ -25,14 +25,14 @@ void InternalGetSystemTime(std::uint8_t& hour, std::uint8_t& minute,
 {
     // TODO: There's probably a cross platform std::chrono implementation possible here.
 
-#if defined(OS_WINDOWS)
+#if OS_WINDOWS
     SYSTEMTIME time;
     GetSystemTime(&time);
     hour = static_cast<std::uint8_t>(time.wHour);
     minute = static_cast<std::uint8_t>(time.wMinute);
     second = static_cast<std::uint8_t>(time.wSecond);
     millisecond = static_cast<std::uint16_t>(time.wMilliseconds);
-#elif defined(OS_LINUX)
+#elif OS_LINUX
     time_t theTime = time(NULL);
     tm theTimeThingy = *localtime(&theTime);
 
@@ -50,7 +50,7 @@ void InternalGetSystemTime(std::uint8_t& hour, std::uint8_t& minute,
 
 void InternalOutputDebugString(const char* str)
 {
-#if defined(OS_WINDOWS)
+#if OS_WINDOWS
     OutputDebugStringA(str);
 #else
     // TODO - nothing special here?

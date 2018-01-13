@@ -4,7 +4,7 @@
 
 namespace Assert {
 
-#if defined(TAR_RELEASE)
+#if TAR_RELEASE
     #define ASSERT(condition) (void)0
     #define ASSERT_MSG(condition, format, ...) (void)0
     #define ASSERT_FAIL() (void)0
@@ -25,7 +25,7 @@ void Fail(const char* condition, const char* file, int line, const char* message
 template <typename ... Args>
 void Fail(const char* condition, const char* file, int line, const char* format, Args ... args);
 
-#if defined(TAR_TEST)
+#if TAR_TEST
 void TestBegin();
 bool TestSuccess();
 #endif

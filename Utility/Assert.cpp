@@ -5,9 +5,9 @@
 #include <cstdlib>
 #include <cstring>
 
-#if defined(OS_WINDOWS)
+#if OS_WINDOWS
     #include "Windows.h"
-#elif defined(OS_LINUX)
+#elif OS_LINUX
     #include <execinfo.h>
     #include <signal.h>
 #endif
@@ -36,7 +36,7 @@ void Fail(const char* condition, const char* file, int line, const char* message
         std::strcat(buffer, message);
     }
 
-#if defined(OS_WINDOWS)
+#if OS_WINDOWS
     void* stackTrace[20];
     int numCapturedFrames = CaptureStackBackTrace(0, 20, stackTrace, NULL);
 
@@ -50,7 +50,7 @@ void Fail(const char* condition, const char* file, int line, const char* message
             std::strcat(buffer, backtraceBuffer);
         }
     }
-#elif defined(OS_LINUX)
+#elif OS_LINUX
     void* stackTrace[20];
     int numCapturedFrames = backtrace(stackTrace, 20);
 
@@ -76,7 +76,7 @@ void Fail(const char* condition, const char* file, int line, const char* message
 
     if (!g_AssertTestMode)
     {
-#if defined(OS_WINDOWS)
+#if OS_WINDOWS
         int response = MessageBox(GetActiveWindow(), buffer, "ASSERTION FAILURE", MB_ABORTRETRYIGNORE);
 
         switch (response)
@@ -98,9 +98,9 @@ void Fail(const char* condition, const char* file, int line, const char* message
 
         if (!skipBreak)
         {
-#if defined(CMP_MSVC)
+#if CMP_MSVC
             __debugbreak();
-#elif defined (OS_LINUX)
+#elif OS_LINUX
             raise(SIGTRAP);
 #endif
         }
