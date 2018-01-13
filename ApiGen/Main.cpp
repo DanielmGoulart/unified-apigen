@@ -1,14 +1,12 @@
-#include "Utility/Assert.hpp"
-#include "Utility/Trace.hpp"
+#include "Targets/SymbolIR/SymbolIR.hpp"
 
-int main()
+#if HAS_DWARF
+    #include "Targets/DWARF/DWARF.hpp"
+#endif
+
+int main(int argc, char** argv)
 {
-    TRACE("This is a test debug message, %u", 5);
-
-    ASSERT(true);
-    ASSERT_MSG(true, "This is an assert message");
-
-    TRACE_CH(Error, "This is a second test debug message");
-
-    ASSERT_FAIL_MSG("This is an intentionally failing assert!");
+#if HAS_DWARF
+    SymbolIR::SymbolIR IR = DWARF::GenerateIRFromExecutable("/nwnx/nwserver");
+#endif
 }

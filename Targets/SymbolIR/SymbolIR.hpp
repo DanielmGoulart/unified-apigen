@@ -1,8 +1,30 @@
+#pragma once
+
 #include <memory>
 #include <string>
 #include <vector>
 
-// WIP
+namespace SymbolIR {
+
+// This format is currently WIP. It represents my initial guess for what we need, but may not 
+// be representative of the final format.
+
+struct SymbolType;
+struct SymbolTypeInstance;
+struct SymbolClassType;
+struct SymbolEnumType;
+struct SymbolPrimitiveType;
+struct SymbolTemplateType;
+
+struct SymbolFunction;
+struct SymbolClassFunction;
+
+enum SymbolProtection
+{
+    Public,
+    Protected,
+    Private,
+};
 
 struct SymbolType
 {
@@ -16,6 +38,30 @@ struct SymbolTypeInstance
     bool m_IsPointer;
     bool m_IsReference;
     std::size_t m_PointerDepth;
+};
+
+struct SymbolClassType : public SymbolType
+{
+    struct InheritanceDescription
+    {
+        SymbolProtection m_Protection;
+        std::shared_ptr<SymbolClassType> m_Class;
+    };
+
+    std::vector<SymbolTypeInstance> m_Data;
+    std::vector<std::shared_ptr<SymbolFunction>> m_Functions;
+    std::vector<InheritanceDescription> m_Parents;
+};
+
+struct SymbolEnumType : public SymbolType
+{
+    struct EnumDescription
+    {
+        std::string m_EntryName;
+        std::size_t m_EntryValue;
+    };
+
+    std::vector<SymbolEnumType> m_Entries;
 };
 
 struct SymbolPrimitiveType : public SymbolType
@@ -38,37 +84,6 @@ struct SymbolPrimitiveType : public SymbolType
     Type m_PrimitiveType;
 };
 
-struct SymbolEnumType : public SymbolType
-{
-    struct EnumDescription
-    {
-        std::string m_EntryName;
-        std::size_t m_EntryValue;
-    };
-
-    std::vector<SymbolEnumType> m_Entries;
-}
-
-enum SymbolProtection
-{
-    Public,
-    Protected,
-    Private,
-};
-
-struct SymbolClassType : public SymbolType
-{
-    struct InheritanceDescription
-    {
-        SymbolProtection m_Protection;
-        std::shared_ptr<SymbolClassType> m_Class;
-    };
-
-    std::vector<SymbolTypeInstance> m_Data;
-    std::vector<std::shared_ptr<SymbolFunction>> m_Functions;
-    std::vector<InheritanceDescription> m_Parents;
-};
-
 struct SymbolTemplateType : public SymbolType
 {
     std::vector<SymbolTypeInstance> m_TemplateParameters;
@@ -86,3 +101,11 @@ struct SymbolClassFunction : public SymbolFunction
     SymbolProtection m_Protection;
     std::shared_ptr<SymbolClassType> m_Class;
 };
+
+struct SymbolIR
+{
+    std::vector<std::shared_ptr<SymbolType>> m_Types;
+    std::vector<std::shared_ptr<SymbolFunction>> m_Functions;
+};
+
+}
