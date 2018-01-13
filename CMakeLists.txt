@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(NWNX-Unified-ApiGen)
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     set(CMP_MSVC 1)
     add_definitions(-DCMP_MSVC)
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
     set(CMP_CLANG 1)
     add_definitions(-DCMP_CLANG)
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL Intel)
     set(CMP_INTEL 1)
     add_definitions(-DCMP_INTEL)
 else() # If we can't detect a compiler, we presume GCC.
@@ -58,7 +58,10 @@ endif()
 
 if(CMP_GCC OR CMP_CLANG)
     # C++17 support
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
+
+	# Various warnings ...
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format-security") 
 
     # TODO: Define targets
 endif()

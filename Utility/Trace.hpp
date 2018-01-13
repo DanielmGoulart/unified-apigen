@@ -6,13 +6,13 @@
 namespace Trace {
 
 #define TRACE(format, ...) \
-    ::Trace::Trace(::Trace::Channel::Debug, __FILE__, __LINE__, (format), __VA_ARGS__)
+    ::Trace::Trace(::Trace::Channel::Debug, __FILE__, __LINE__, (format), ##__VA_ARGS__)
 
 #define TRACE_CH(channel, format, ...) \
-    ::Trace::Trace((::Trace::Channel::channel), __FILE__, __LINE__, (format), __VA_ARGS__)
+    ::Trace::Trace((::Trace::Channel::channel), __FILE__, __LINE__, (format), ##__VA_ARGS__)
 
 #define TRACE_CH_VAR(channel, format, ...) \
-    ::Trace::Trace(channel, __FILE__, __LINE__, (format), __VA_ARGS__)
+    ::Trace::Trace(channel, __FILE__, __LINE__, (format), ##__VA_ARGS__)
 
 struct Channel
 {

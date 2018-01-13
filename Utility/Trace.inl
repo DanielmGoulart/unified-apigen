@@ -1,7 +1,7 @@
 template <typename ... Args>
 void Trace(Channel::Enum channel, const char* file, int line, const char* format, Args ... args)
 {
-    static constexpr char* s_ChannelStrs[] =
+    static constexpr char const* s_ChannelStrs[] =
     {
         "DEBUG",
         "NOTICE",
