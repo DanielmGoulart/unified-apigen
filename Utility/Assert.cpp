@@ -8,8 +8,8 @@
 #if defined(OS_WINDOWS)
     #include "Windows.h"
 #elif defined(OS_LINUX)
-	#include <execinfo.h>
-	#include <signal.h>
+    #include <execinfo.h>
+    #include <signal.h>
 #endif
 
 namespace Assert {
@@ -51,20 +51,20 @@ void Fail(const char* condition, const char* file, int line, const char* message
         }
     }
 #elif defined(OS_LINUX)
-	void* stackTrace[20];
-	int numCapturedFrames = backtrace(stackTrace, 20);
+    void* stackTrace[20];
+    int numCapturedFrames = backtrace(stackTrace, 20);
 
-	if (numCapturedFrames)
-	{
-		char** resolvedFrames = backtrace_symbols(stackTrace, 20);
-		std::strcat(buffer, "\n  Backtrace:\n");
-		for (int i = 0; i < numCapturedFrames; ++i)
-		{
-			char backtraceBuffer[256];
-			std::sprintf(backtraceBuffer, "    %s\n", resolvedFrames[i]);
-			std::strcat(buffer, backtraceBuffer);
-		}
-	}
+    if (numCapturedFrames)
+    {
+        char** resolvedFrames = backtrace_symbols(stackTrace, 20);
+        std::strcat(buffer, "\n  Backtrace:\n");
+        for (int i = 0; i < numCapturedFrames; ++i)
+        {
+            char backtraceBuffer[256];
+            std::sprintf(backtraceBuffer, "    %s\n", resolvedFrames[i]);
+            std::strcat(buffer, backtraceBuffer);
+        }
+    }
 #endif // OS_WINDOWS
 
     TRACE_CH(Fatal, buffer);
@@ -101,7 +101,7 @@ void Fail(const char* condition, const char* file, int line, const char* message
 #if defined(CMP_MSVC)
             __debugbreak();
 #elif defined (OS_LINUX)
-			raise(SIGTRAP);
+            raise(SIGTRAP);
 #endif
         }
 
