@@ -91,18 +91,16 @@ if(CMP_GCC OR CMP_CLANG)
     # Various warnings ...
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format-security")
 
+    # fPIC for libelfin
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+
     # TODO: Define targets
 endif()
 
 # Define targets
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}
-    -DTAR_RELEASE_FINAL=1 -DTAR_RELEASE=1 -DTAR_DEBUG=0")
-
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}
-    -DTAR_RELEASE_FINAL=0 -DTAR_RELEASE=1 -DTAR_DEBUG=1")
-
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}
-    -DTAR_RELEASE_FINAL=0 -DTAR_RELEASE=0 -DTAR_DEBUG=1")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DTAR_RELEASE_FINAL=1 -DTAR_RELEASE=1 -DTAR_DEBUG=0")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DTAR_RELEASE_FINAL=0 -DTAR_RELEASE=1 -DTAR_DEBUG=1")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DTAR_RELEASE_FINAL=0 -DTAR_RELEASE=0 -DTAR_DEBUG=1")
 
 set(ARTIFACTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Build-Artifacts")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ARTIFACTS_DIR}/bin)
@@ -110,7 +108,25 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${ARTIFACTS_DIR}/lib)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-add_subdirectory(External)
 add_subdirectory(Utility)
+
+add_subdirectory(External)
 add_subdirectory(Targets)
+
+if (HAS_DWARF)
+    message("Building with DWARF support.")
+    add_definitions(-DHAS_DWARF=1)
+else()
+    message("Building without DWARF support.")
+    add_definitions(-DHAS_DWARF=0)
+endif()
+
+if (HAS_PDB)
+    message("Building with PDB support.")
+    add_definitions(-DHAS_PDB=1)
+else()
+    message("Building without PDB support.")
+    add_definitions(-DHAS_PDB=0)
+endif()
+
 add_subdirectory(ApiGen)

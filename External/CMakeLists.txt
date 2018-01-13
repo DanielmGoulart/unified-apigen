@@ -1,0 +1,12 @@
+# Build libelfin.
+
+add_custom_target(
+   libelfin
+   COMMAND make
+   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libelfin
+)
+
+set(LIBELF_STATIC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libelfin/elf/libelf++.a PARENT_SCOPE)
+set(LIBDWARF_STATIC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libelfin/dwarf/libdwarf++.a PARENT_SCOPE)
+set(LIBELF_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libelfin/elf PARENT_SCOPE)
+set(LIBDWARF_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libelfin/dwarf PARENT_SCOPE)
