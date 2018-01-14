@@ -9,59 +9,29 @@ namespace SymbolIR {
 // This format is currently WIP. It represents my initial guess for what we need, but may not 
 // be representative of the final format.
 
+struct Symbol;
 struct SymbolType;
-struct SymbolTypeInstance;
-struct SymbolClassType;
-struct SymbolEnumType;
 struct SymbolPrimitiveType;
-struct SymbolTemplateType;
+
+struct SymbolStructure;
+struct SymbolClass;
+struct SymbolEnum;
 
 struct SymbolFunction;
 struct SymbolClassFunction;
 
-enum SymbolProtection
+using SymbolIndex = std::size_t;
+
+struct Symbol
 {
-    Public,
-    Protected,
-    Private,
+    // Empty base class used for up/downcasting between symbols.
+    virtual ~Symbol() = default;
 };
 
-struct SymbolType
+struct SymbolType : public Symbol
 {
     std::string m_Name;
-    std::size_t m_Size;
-};
-
-struct SymbolTypeInstance
-{
-    std::shared_ptr<SymbolType> m_Type;
-    bool m_IsPointer;
-    bool m_IsReference;
-    std::size_t m_PointerDepth;
-};
-
-struct SymbolClassType : public SymbolType
-{
-    struct InheritanceDescription
-    {
-        SymbolProtection m_Protection;
-        std::shared_ptr<SymbolClassType> m_Class;
-    };
-
-    std::vector<SymbolTypeInstance> m_Data;
-    std::vector<std::shared_ptr<SymbolFunction>> m_Functions;
-    std::vector<InheritanceDescription> m_Parents;
-};
-
-struct SymbolEnumType : public SymbolType
-{
-    struct EnumDescription
-    {
-        std::string m_EntryName;
-        std::size_t m_EntryValue;
-    };
-
-    std::vector<SymbolEnumType> m_Entries;
+    std::size_t m_BitSize;
 };
 
 struct SymbolPrimitiveType : public SymbolType
@@ -84,28 +54,47 @@ struct SymbolPrimitiveType : public SymbolType
     Type m_PrimitiveType;
 };
 
-struct SymbolTemplateType : public SymbolType
+struct SymbolStructure : public Symbol
 {
-    std::vector<SymbolTypeInstance> m_TemplateParameters;
+    // Empty base class for hierarchy.
 };
 
-struct SymbolFunction
+struct SymbolClass : public SymbolStructure
 {
+    std::vector<SymbolIndex> m_Members;
+    std::vector<SymbolIndex> m_Functions;
+    std::vector<SymbolIndex> m_Structures;
+    std::vector<SymbolIndex> m_BaseClasses;
+};
+
+struct SymbolEnum : public SymbolStructure
+{
+    struct EnumDescription
+    {
+        std::string m_EntryName;
+        std::size_t m_EntryValue;
+    };
+
+    std::vector<SymbolEnum> m_Entries;
+};
+
+struct SymbolFunction : public Symbol
+{
+    struct NamedParameter
+    {
+        std::string m_Name;
+        SymbolIndex m_Type;
+    };
+
     std::string m_Name;
-    SymbolType m_Return;
-    std::vector<SymbolType> m_Parameters;
-};
-
-struct SymbolClassFunction : public SymbolFunction
-{
-    SymbolProtection m_Protection;
-    std::shared_ptr<SymbolClassType> m_Class;
+    SymbolIndex m_Return;
+    std::vector<NamedParameter> m_Parameters;
+    std::uintptr_t m_Address;
 };
 
 struct SymbolIR
 {
-    std::vector<std::shared_ptr<SymbolType>> m_Types;
-    std::vector<std::shared_ptr<SymbolFunction>> m_Functions;
+    std::vector<std::unique_ptr<Symbol>> m_Symbols;
 };
 
 }

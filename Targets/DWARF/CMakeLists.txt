@@ -6,7 +6,8 @@ endif()
 set(HAS_DWARF 1 PARENT_SCOPE)
 
 add_library(DWARF STATIC
-    DWARF.cpp DWARF.hpp)
+    DWARF.cpp DWARF.hpp
+    DWARFIR.cpp DWARFIR.hpp)
 
 target_link_libraries(DWARF Utility)
 target_link_libraries(DWARF SymbolIR)
