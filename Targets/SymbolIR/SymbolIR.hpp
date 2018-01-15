@@ -20,6 +20,8 @@ struct SymbolEnum;
 struct SymbolFunction;
 struct SymbolClassFunction;
 
+// NOTE: 0 is a magic number here. It means there is nothing there.
+// All of our indices start at 1.
 using SymbolIndex = std::size_t;
 
 struct Symbol
@@ -54,7 +56,7 @@ struct SymbolPrimitiveType : public SymbolType
     Type m_PrimitiveType;
 };
 
-struct SymbolStructure : public Symbol
+struct SymbolStructure : public SymbolType
 {
     // Empty base class for hierarchy.
 };

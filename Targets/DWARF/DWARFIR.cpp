@@ -29,30 +29,40 @@ void DEBUG_RecursePrint(const dwarf::die& die, int depth = 0)
     }
 }
 
+std::unordered_map<dwarf::section_offset, SymbolIR::SymbolIndex> s_OffsetToSymbolIndexMap;
+std::unordered_map<SymbolIR::SymbolIndex, dwarf::section_offset> s_SymbolIndexToOffsetMap;
+
 bool GetIRSymbolIndexFromDIE(SymbolIR::SymbolIR& ir, dwarf::section_offset offset, SymbolIR::SymbolIndex* out)
 {
     ASSERT(out);
 
-    static std::unordered_map<dwarf::section_offset, SymbolIR::SymbolIndex> s_DIESymbolMap;
-    auto iter = s_DIESymbolMap.find(offset);
+    auto iter = s_OffsetToSymbolIndexMap.find(offset);
 
-    if (iter != std::end(s_DIESymbolMap))
+    if (iter != std::end(s_OffsetToSymbolIndexMap))
     {
         *out = iter->second;
         return true;
     }
 
-    static SymbolIR::SymbolIndex s_NextTypeIndex = 0;
-
-    s_DIESymbolMap.insert(std::make_pair(offset, s_NextTypeIndex++));
+    static SymbolIR::SymbolIndex s_NextTypeIndex = 1;
+    SymbolIR::SymbolIndex index = s_NextTypeIndex++;
+    s_OffsetToSymbolIndexMap.insert(std::make_pair(offset, index));
+    s_SymbolIndexToOffsetMap.insert(std::make_pair(index, offset));
 
     if (ir.m_Symbols.size() <= s_NextTypeIndex)
     {
         ir.m_Symbols.resize(s_NextTypeIndex + 1);
     }
 
-    *out = s_NextTypeIndex;
+    *out = index;
     return true;
+}
+
+dwarf::section_offset GetDIEFromSymbolIndex(SymbolIR::SymbolIR& ir, SymbolIR::SymbolIndex index)
+{
+    auto iter = s_SymbolIndexToOffsetMap.find(index);
+    ASSERT(iter != std::end(s_SymbolIndexToOffsetMap));
+    return iter->first;
 }
 
 }
@@ -77,12 +87,32 @@ SymbolIR::SymbolIndex BuildStructureFromDIE(SymbolIR::SymbolIR& ir, const dwarf:
         ir.m_Symbols[structureIndex] = std::make_unique<SymbolIR::SymbolClass>();
         SymbolIR::SymbolClass* symbolClass = dynamic_cast<SymbolIR::SymbolClass*>(ir.m_Symbols[structureIndex].get());
 
+        for (auto& attributePair : die.attributes())
+        {
+            dwarf::DW_AT attribute = attributePair.first;
+            dwarf::value value = attributePair.second;
+
+            if (attribute == dwarf::DW_AT::name)
+            {
+                symbolClass->m_Name = value.as_string();
+            }
+            else
+            {
+                TRACE("Unhandled attribute %s %s at structure level.",
+                    to_string(attribute).c_str(),
+                    to_string(value).c_str());
+            }
+        }
+
         for (const dwarf::die& child : die)
         {
             if (child.tag == dwarf::DW_TAG::subprogram) // function
             {
                 SymbolIR::SymbolIndex function = BuildFunctionFromDIE(ir, child, die);
-                symbolClass->m_Functions.push_back(function);
+                if (function)
+                {
+                    symbolClass->m_Functions.push_back(function);
+                }
             }
             else if (child.tag == dwarf::DW_TAG::member)
             {
@@ -94,7 +124,10 @@ SymbolIR::SymbolIndex BuildStructureFromDIE(SymbolIR::SymbolIR& ir, const dwarf:
                 child.tag == dwarf::DW_TAG::union_type)
             {
                 SymbolIR::SymbolIndex nestedStructure = BuildStructureFromDIE(ir, child, die);
-                symbolClass->m_Structures.push_back(nestedStructure);
+                if (nestedStructure)
+                {
+                    symbolClass->m_Structures.push_back(nestedStructure);
+                }
             }
             else if (child.tag == dwarf::DW_TAG::template_type_parameter)
             {
