@@ -28,12 +28,22 @@ struct Symbol
 {
     // Empty base class used for up/downcasting between symbols.
     virtual ~Symbol() = default;
+
+    // TEMP for debugging
+    bool m_Declaration = false;
+    bool m_Artificial = false;
+};
+
+struct SymbolLink : public Symbol
+{
+    // TEMP for debugging
+    SymbolIndex m_Target = 0;
 };
 
 struct SymbolType : public Symbol
 {
     std::string m_Name;
-    std::size_t m_BitSize;
+    std::size_t m_Size = 0;
 };
 
 struct SymbolPrimitiveType : public SymbolType
@@ -85,13 +95,13 @@ struct SymbolFunction : public Symbol
     struct NamedParameter
     {
         std::string m_Name;
-        SymbolIndex m_Type;
+        SymbolIndex m_Type = 0;
     };
 
     std::string m_Name;
-    SymbolIndex m_Return;
+    SymbolIndex m_Return = 0;
     std::vector<NamedParameter> m_Parameters;
-    std::uintptr_t m_Address;
+    std::uintptr_t m_Address = 0;
 };
 
 struct SymbolIR

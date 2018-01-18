@@ -76,6 +76,72 @@ SymbolIR::SymbolIndex BuildTypeFromDIE(SymbolIR::SymbolIR& ir, const dwarf::die&
     return SymbolIR::SymbolIndex();
 }
 
+void ParseStructureAttributes(SymbolIR::SymbolIR& ir, SymbolIR::SymbolClass* symbolClass, const dwarf::die& die, bool first = false)
+{
+    for (auto& attributePair : die.attributes())
+    {
+        dwarf::DW_AT attribute = attributePair.first;
+        dwarf::value value = attributePair.second;
+
+        if (attribute == dwarf::DW_AT::declaration)
+        {
+            if (first)
+            {
+                symbolClass->m_Declaration = value.as_flag();
+            }
+        }
+        else if (attribute == dwarf::DW_AT::name)
+        {
+            symbolClass->m_Name = value.as_string();
+        }
+        else
+        {
+            TRACE("Unhandled attribute %s %s at structure level.",
+                to_string(attribute).c_str(),
+                to_string(value).c_str());
+        }
+    }
+}
+
+void ParseStructureChildren(SymbolIR::SymbolIR& ir, SymbolIR::SymbolClass* symbolClass, const dwarf::die& die, bool first = false)
+{
+    for (const dwarf::die& child : die)
+    {
+        if (child.tag == dwarf::DW_TAG::subprogram) // function
+        {
+            SymbolIR::SymbolIndex function = BuildFunctionFromDIE(ir, child, die);
+            if (function)
+            {
+                symbolClass->m_Functions.push_back(function);
+            }
+        }
+        else if (child.tag == dwarf::DW_TAG::member)
+        {
+            // TODO: How to handle?
+        }
+        else if (child.tag == dwarf::DW_TAG::class_type ||
+            child.tag == dwarf::DW_TAG::structure_type ||
+            child.tag == dwarf::DW_TAG::enumeration_type ||
+            child.tag == dwarf::DW_TAG::union_type)
+        {
+            SymbolIR::SymbolIndex nestedStructure = BuildStructureFromDIE(ir, child, die);
+            if (nestedStructure)
+            {
+                symbolClass->m_Structures.push_back(nestedStructure);
+            }
+        }
+        else if (child.tag == DW_TAG_GCC_1)
+        {
+            // Intentionally ignored.
+        }
+        else
+        {
+            TRACE("Unhandled die %s at structure level.", to_string(child.tag).c_str());
+            DEBUG_RecursePrint(child);
+        }
+    }
+}
+
 SymbolIR::SymbolIndex BuildStructureFromDIE(SymbolIR::SymbolIR& ir, const dwarf::die& die, const dwarf::die& parent)
 {
     if (die.tag == dwarf::DW_TAG::class_type || die.tag == dwarf::DW_TAG::structure_type)
@@ -87,62 +153,8 @@ SymbolIR::SymbolIndex BuildStructureFromDIE(SymbolIR::SymbolIR& ir, const dwarf:
         ir.m_Symbols[structureIndex] = std::make_unique<SymbolIR::SymbolClass>();
         SymbolIR::SymbolClass* symbolClass = dynamic_cast<SymbolIR::SymbolClass*>(ir.m_Symbols[structureIndex].get());
 
-        for (auto& attributePair : die.attributes())
-        {
-            dwarf::DW_AT attribute = attributePair.first;
-            dwarf::value value = attributePair.second;
-
-            if (attribute == dwarf::DW_AT::name)
-            {
-                symbolClass->m_Name = value.as_string();
-            }
-            else
-            {
-                TRACE("Unhandled attribute %s %s at structure level.",
-                    to_string(attribute).c_str(),
-                    to_string(value).c_str());
-            }
-        }
-
-        for (const dwarf::die& child : die)
-        {
-            if (child.tag == dwarf::DW_TAG::subprogram) // function
-            {
-                SymbolIR::SymbolIndex function = BuildFunctionFromDIE(ir, child, die);
-                if (function)
-                {
-                    symbolClass->m_Functions.push_back(function);
-                }
-            }
-            else if (child.tag == dwarf::DW_TAG::member)
-            {
-                // TODO: How to handle?
-            }
-            else if (child.tag == dwarf::DW_TAG::class_type ||
-                child.tag == dwarf::DW_TAG::structure_type ||
-                child.tag == dwarf::DW_TAG::enumeration_type ||
-                child.tag == dwarf::DW_TAG::union_type)
-            {
-                SymbolIR::SymbolIndex nestedStructure = BuildStructureFromDIE(ir, child, die);
-                if (nestedStructure)
-                {
-                    symbolClass->m_Structures.push_back(nestedStructure);
-                }
-            }
-            else if (child.tag == dwarf::DW_TAG::template_type_parameter)
-            {
-                // TODO: Template
-            }
-            else if (child.tag == DW_TAG_GCC_1)
-            {
-                // Intentionally ignored.
-            }
-            else
-            {
-                TRACE("Unhandled die %s at structure level.", to_string(child.tag).c_str());
-                DEBUG_RecursePrint(child);
-            }
-        }
+        ParseStructureAttributes(ir, symbolClass, die, true);
+        ParseStructureChildren(ir, symbolClass, die, true);
 
         return structureIndex;
     }
@@ -163,6 +175,148 @@ SymbolIR::SymbolIndex BuildStructureFromDIE(SymbolIR::SymbolIR& ir, const dwarf:
     return SymbolIR::SymbolIndex();
 }
 
+void ParseFunctionAttributes(SymbolIR::SymbolIR& ir, SymbolIR::SymbolFunction* symbolFunction, const dwarf::die& die, bool first = false)
+{
+    for (auto& attributePair : die.attributes())
+    {
+        dwarf::DW_AT attribute = attributePair.first;
+        dwarf::value value = attributePair.second;
+
+        if (attribute == dwarf::DW_AT::declaration)
+        {
+            if (first)
+            {
+                symbolFunction->m_Declaration = value.as_flag();
+            }
+        }
+        else if (attribute == dwarf::DW_AT::name)
+        {
+            symbolFunction->m_Name = value.as_string();
+        }
+        else if (attribute == dwarf::DW_AT::type)
+        {
+            dwarf::die returnDie = value.as_reference();
+            GetIRSymbolIndexFromDIE(ir, returnDie.get_section_offset(), &symbolFunction->m_Return);
+        }
+        else if (attribute == dwarf::DW_AT::low_pc) // address
+        {
+            symbolFunction->m_Address = value.as_address();
+        }
+        else if (attribute == dwarf::DW_AT::specification) // reference to another DIE
+        {
+            dwarf::die child = value.as_reference();
+            ParseFunctionAttributes(ir, symbolFunction, child);
+        }
+        else if (attribute == dwarf::DW_AT::abstract_origin)
+        {
+            dwarf::die child = value.as_reference();
+            ParseFunctionAttributes(ir, symbolFunction, child);
+        }
+        else if (attribute == dwarf::DW_AT::artificial) // compiler generated (like thisptr)
+        {
+            if (first)
+            {
+                symbolFunction->m_Artificial = value.as_flag();
+            }
+
+            // TODO: Do we need to handle this here?
+        }
+        else if (attribute == dwarf::DW_AT::external || // defined in another compilation unit
+            attribute == dwarf::DW_AT::decl_file ||
+            attribute == dwarf::DW_AT::decl_line ||
+            attribute == dwarf::DW_AT::declaration || // ??
+            attribute == dwarf::DW_AT::sibling || // ??
+            attribute == dwarf::DW_AT::linkage_name || // mangled name
+            attribute == dwarf::DW_AT::object_pointer || // thisptr, don't think we need
+            attribute == dwarf::DW_AT::inline_ ||
+            attribute == dwarf::DW_AT::frame_base ||
+            attribute == dwarf::DW_AT::location || // ??, probably the section or compilation unit
+            attribute == dwarf::DW_AT::high_pc || // ??, something to do with addresses
+            attribute == dwarf::DW_AT::accessibility || // public / etc
+            attribute == DW_AT_GCC_1 ||
+            attribute == DW_AT_GCC_2 ||
+            attribute == DW_AT_GCC_3)
+        {
+            // Intentionally ignored.
+        }
+        else
+        {
+            TRACE("Unhandled attribute %s %s at function level.",
+                to_string(attribute).c_str(),
+                to_string(value).c_str());
+        }
+    }
+}
+
+void ParseFunctionChildren(SymbolIR::SymbolIR& ir, SymbolIR::SymbolFunction* symbolFunction, const dwarf::die& die, bool first = false)
+{
+    for (const dwarf::die& child : die)
+    {
+        if (child.tag == dwarf::DW_TAG::formal_parameter)
+        {
+            bool artificial = false;
+            SymbolIR::SymbolFunction::NamedParameter parameter;
+
+            for (auto& attributePair : child.attributes())
+            {
+                dwarf::DW_AT attribute = attributePair.first;
+                dwarf::value value = attributePair.second;
+
+                if (attribute == dwarf::DW_AT::name) // obvious
+                {
+                    parameter.m_Name = value.as_string();
+                }
+                else if (attribute == dwarf::DW_AT::type) // obvious
+                {
+                    dwarf::die parameterDie = value.as_reference();
+                    SymbolIR::SymbolIndex parameterIndex;
+                    GetIRSymbolIndexFromDIE(ir, parameterDie.get_section_offset(), &parameterIndex);
+                    parameter.m_Type = parameterIndex;
+                }
+                else if (attribute == dwarf::DW_AT::artificial) // compiler generated (like thisptr)
+                {
+                    // TODO: Is this really how we handle this? Maybe.
+                    artificial = value.as_flag();
+                    symbolFunction->m_Artificial = artificial;
+                }
+                else if (attribute == dwarf::DW_AT::decl_file ||
+                    attribute == dwarf::DW_AT::decl_line ||
+                    attribute == dwarf::DW_AT::abstract_origin || // something to do with inline
+                    attribute == dwarf::DW_AT::location) // ??, probably the section or compilation unit
+                {
+                    // Intentionally ignored.
+                }
+                else
+                {
+                    TRACE("Unhandled attribute %s %s at function formal parameter level.",
+                        to_string(attribute).c_str(),
+                        to_string(value).c_str());
+                }
+            }
+
+            if (!artificial)
+            {
+                symbolFunction->m_Parameters.push_back(parameter);
+            }
+        }
+        else if (child.tag == dwarf::DW_TAG::variable) // variables on the stack - it would be cool to print these
+        {
+            // TODO: How to handle?
+        }
+        else if (child.tag == dwarf::DW_TAG::inlined_subroutine || // Something has been inlined
+            child.tag == dwarf::DW_TAG::unspecified_parameters || // ??
+            child.tag == DW_TAG_GCC_1)
+        {
+            // Intentionally ignored.
+        }
+        else
+        {
+            TRACE("Unhandled die %s at function level.", to_string(child.tag).c_str());
+            DEBUG_RecursePrint(child);
+        }
+    }
+}
+
 SymbolIR::SymbolIndex BuildFunctionFromDIE(SymbolIR::SymbolIR& ir, const dwarf::die& die, const dwarf::die& parent)
 {
     if (die.tag == dwarf::DW_TAG::subprogram)
@@ -174,124 +328,8 @@ SymbolIR::SymbolIndex BuildFunctionFromDIE(SymbolIR::SymbolIR& ir, const dwarf::
         ir.m_Symbols[functionIndex] = std::make_unique<SymbolIR::SymbolFunction>();
         SymbolIR::SymbolFunction* symbolFunction = dynamic_cast<SymbolIR::SymbolFunction*>(ir.m_Symbols[functionIndex].get());
 
-        for (auto& attributePair : die.attributes())
-        {
-            dwarf::DW_AT attribute = attributePair.first;
-            dwarf::value value = attributePair.second;
-
-            if (attribute == dwarf::DW_AT::name)
-            {
-                symbolFunction->m_Name = value.as_string();
-            }
-            else if (attribute == dwarf::DW_AT::type)
-            {
-                dwarf::die returnDie = value.as_reference();
-                GetIRSymbolIndexFromDIE(ir, returnDie.get_section_offset(), &symbolFunction->m_Return);
-            }
-            else if (attribute == dwarf::DW_AT::low_pc) // address
-            {
-                symbolFunction->m_Address = value.as_address();
-            }
-            else if (attribute == dwarf::DW_AT::specification) // reference to another DIE
-            {
-                // TODO: How to handle?
-            }
-            else if (attribute == dwarf::DW_AT::artificial) // compiler generated (like thisptr)
-            {
-                // TODO: Do we need to handle this here?
-            }
-            else if (attribute == dwarf::DW_AT::external || // defined in another compilation unit
-                attribute == dwarf::DW_AT::decl_file ||
-                attribute == dwarf::DW_AT::decl_line ||
-                attribute == dwarf::DW_AT::declaration || // ??
-                attribute == dwarf::DW_AT::sibling || // ??
-                attribute == dwarf::DW_AT::linkage_name || // mangled name
-                attribute == dwarf::DW_AT::object_pointer || // thisptr, don't think we need
-                attribute == dwarf::DW_AT::inline_ ||
-                attribute == dwarf::DW_AT::abstract_origin || // something to do with inline
-                attribute == dwarf::DW_AT::frame_base ||
-                attribute == dwarf::DW_AT::location || // ??, probably the section or compilation unit
-                attribute == dwarf::DW_AT::high_pc || // ??, something to do with addresses
-                attribute == dwarf::DW_AT::accessibility || // public / etc
-                attribute == DW_AT_GCC_1 ||
-                attribute == DW_AT_GCC_2 ||
-                attribute == DW_AT_GCC_3)
-            {
-                // Intentionally ignored.
-            }
-            else
-            {
-                TRACE("Unhandled attribute %s %s at function level.",
-                    to_string(attribute).c_str(),
-                    to_string(value).c_str());
-            }
-        }
-
-        for (const dwarf::die& child : die)
-        {
-            if (child.tag == dwarf::DW_TAG::formal_parameter)
-            {
-                bool artificial = false;
-                SymbolIR::SymbolFunction::NamedParameter parameter;
-
-                for (auto& attributePair : child.attributes())
-                {
-                    dwarf::DW_AT attribute = attributePair.first;
-                    dwarf::value value = attributePair.second;
-
-                    if (attribute == dwarf::DW_AT::name) // obvious
-                    {
-                        parameter.m_Name = value.as_string();
-                    }
-                    else if (attribute == dwarf::DW_AT::type) // obvious
-                    {
-                        dwarf::die parameterDie = value.as_reference();
-                        SymbolIR::SymbolIndex parameterIndex;
-                        GetIRSymbolIndexFromDIE(ir, parameterDie.get_section_offset(), &parameterIndex);
-                        parameter.m_Type = parameterIndex;
-                    }
-                    else if (attribute == dwarf::DW_AT::artificial) // compiler generated (like thisptr)
-                    {
-                        // TODO: Is this really how we handle this? Maybe.
-                        artificial = true;
-                        break;
-                    }
-                    else if (attribute == dwarf::DW_AT::decl_file ||
-                        attribute == dwarf::DW_AT::decl_line ||
-                        attribute == dwarf::DW_AT::abstract_origin || // something to do with inline
-                        attribute == dwarf::DW_AT::location) // ??, probably the section or compilation unit
-                    {
-                        // Intentionally ignored.
-                    }
-                    else
-                    {
-                        TRACE("Unhandled attribute %s %s at function formal parameter level.",
-                            to_string(attribute).c_str(),
-                            to_string(value).c_str());
-                    }
-                }
-
-                if (!artificial)
-                {
-                    symbolFunction->m_Parameters.push_back(parameter);
-                }
-            }
-            else if (child.tag == dwarf::DW_TAG::variable) // variables on the stack - it would be cool to print these
-            {
-                // TODO: How to handle?
-            }
-            else if (child.tag == dwarf::DW_TAG::inlined_subroutine || // Something has been inlined
-                child.tag == dwarf::DW_TAG::unspecified_parameters || // ??
-                child.tag == DW_TAG_GCC_1)
-            {
-                // Intentionally ignored.
-            }
-            else
-            {
-                TRACE("Unhandled die %s at function level.", to_string(child.tag).c_str());
-                DEBUG_RecursePrint(child);
-            }
-        }
+        ParseFunctionAttributes(ir, symbolFunction, die, true);
+        ParseFunctionChildren(ir, symbolFunction, die, true);
 
         return functionIndex;
     }

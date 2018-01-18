@@ -6,15 +6,8 @@
     #include "Targets/DWARF/DWARF.hpp"
 #endif
 
-int main(int argc, char** argv)
+void PrintClasses(FILE* test, SymbolIR::SymbolIR& IR)
 {
-#if HAS_DWARF
-    SymbolIR::SymbolIR IR = DWARF::GenerateIRFromExecutable("/nwnx/nwserver-local-dwarf4-nogdb");
-#endif
-
-    FILE* test = fopen("/var/www/html/api.txt", "w");
-    ASSERT(test);
-
     for (std::size_t i = 0; i < IR.m_Symbols.size(); ++i)
     {
         std::unique_ptr<SymbolIR::Symbol>& sym = IR.m_Symbols[i];
@@ -93,6 +86,60 @@ int main(int argc, char** argv)
             std::fprintf(test, "\n\n");
         }
     }
-    
+}
+
+void PrintSymbolTable(FILE* test, SymbolIR::SymbolIR& IR)
+{
+    for (SymbolIR::SymbolIndex i = 0; i < IR.m_Symbols.size(); ++i)
+    {
+        std::unique_ptr<SymbolIR::Symbol>& sym = IR.m_Symbols[i];
+  
+        SymbolIR::Symbol* symPtr = sym.get();
+        bool muted = symPtr && (symPtr->m_Declaration || symPtr->m_Artificial);
+        SymbolIR::SymbolType* symType = dynamic_cast<SymbolIR::SymbolType*>(symPtr);
+        SymbolIR::SymbolClass* symClass = dynamic_cast<SymbolIR::SymbolClass*>(symPtr);
+        SymbolIR::SymbolFunction* symFunc = dynamic_cast<SymbolIR::SymbolFunction*>(symPtr);
+        SymbolIR::SymbolLink* symLink = dynamic_cast<SymbolIR::SymbolLink*>(symPtr);
+
+        if (muted)
+        {
+            std::fprintf(test, "[0x%x] <%s>\n", i, "Muted");
+        }
+        else if (symClass)
+        {
+            std::fprintf(test, "[0x%x] <%s> \"%s\" Decl:%i Artificial:%i\n", i, "SymbolClass", symClass->m_Name.c_str(), symPtr->m_Declaration ? 1 : 0, symPtr->m_Artificial ? 1 : 0);
+            std::fprintf(test, "  Members:%d, Functions:%d, Structures:%d, BaseClasses:%d\n",
+                symClass->m_Members.size(), symClass->m_Functions.size(), symClass->m_Structures.size(), symClass->m_BaseClasses.size());
+        }
+        else if (symType)
+        {
+            std::fprintf(test, "[0x%x] <%s> \"%s\" Decl:%i Artificial:%i\n", i, "SymbolType", symType->m_Name.c_str(), symPtr->m_Declaration ? 1 : 0, symPtr->m_Artificial ? 1 : 0);
+        }
+        else if (symFunc)
+        {
+            std::fprintf(test, "[0x%x] <%s> \"%s\" Decl:%i Artificial:%i\n", i, "SymbolFunction", symFunc->m_Name.c_str(), symPtr->m_Declaration ? 1 : 0, symPtr->m_Artificial ? 1 : 0);
+            std::fprintf(test, "  Return:[0x%x], Parameters:%d, Address:!0x%x!\n", symFunc->m_Return, symFunc->m_Parameters.size(), symFunc->m_Address);
+        }
+        else if (symLink)
+        {
+            std::fprintf(test, "[0x%x] <%s> [0x%x]", i, "SymbolLink", symLink->m_Target);
+        }
+        else
+        {
+            std::fprintf(test, "[0x%x] <%s>\n", i, symPtr ? "Unknown" : "Empty");
+        }
+    }
+}
+
+int main(int argc, char** argv)
+{
+#if HAS_DWARF
+    SymbolIR::SymbolIR IR = DWARF::GenerateIRFromExecutable("/nwnx/nwserver-local-dwarf4-nogdb");
+#endif
+
+    FILE* test = fopen("/var/www/html/api.txt", "w");
+    ASSERT(test);
+
+    PrintSymbolTable(test, IR);
     fclose(test);
 }
